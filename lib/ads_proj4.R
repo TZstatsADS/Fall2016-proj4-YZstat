@@ -87,10 +87,72 @@ variable.feature<-function(variable,num.center){
 }
 
 
+library(rhdf5)
+library(NLP)
+library(tm)
+library(lda)
+library(LDAvis)
+
+
+##### Read Data
+# 
+# mydata<-list.files(path="~/Desktop/Project4_data/data", recursive = TRUE)
+# setwd("~/Desktop/Project4_data/data")
+# 
+# 
+# H5close()
+# 
+# for (i in 1:length(mydata)){
+# 
+#   X_train[[i]]<-h5read(mydata[i],"/analysis")
+# }
+
+
+
+
+create_variable<-function(name,dataset,rank){
+  
+  name<-dataset[[1]][rank]
+  nlength<-length(unlist(dataset[[1]][rank]))
+ 
+  for (i in 2:100){
+    name<-rbind(name,dataset[[i]][rank])
+    nlength<-rbind(nlength,length(unlist(dataset[[i]][rank])))
+  }
+  
+  final_matrix<-cbind(name,nlength)
+  row.names(final_matrix)<-NULL
+  colnames(final_matrix)[2]<-c("length")
+  
+  n<-round(mean(unlist(final_matrix[,2])))
+  K<-matrix(data=0, nrow = 100, ncol = n)
+  
+  for (i in 1:100){
+    if (final_matrix[,2][[i]] < n){
+      haha<-rep(final_matrix[[i]],n)
+      K[i,]<-haha[1:n]
+    } else {
+      K[i,]<-final_matrix[[i]][1:n]
+    }
+  }
+  K[is.na(K)]<-0
+  return(K)
+}
+
+
+variable.feature<-function(variable,num.center){
+  
+  lala<-kmeans(variable,centers=num.center,iter.max=2,nstart=10)
+  
+  return(as.factor(lala$cluster))
+  
+}
+
+
 create.feature<-function(dataset,num.center){
   
-  n<-ncol(dataset)
-  m<-nrow(dataset)
+  n<-15
+  m<-100
   
   X_bars_confidence <- create_variable(bars_confidence,dataset,1)
   X_bars_start <- create_variable(bars_start,dataset,2)
@@ -105,11 +167,11 @@ create.feature<-function(dataset,num.center){
   X_segments_pitches <- create_variable(segments_pitches,dataset,11)
   X_segments_start <- create_variable(segments_start,dataset,12)
   X_segments_timbre <- create_variable(segments_timbre,dataset,13)
-  X_songs <- create_variable(songs,dataset,14)
-  X_tatums_confidence <- create_variable(tatums_confidence,dataset,15)
-  X_tatums_start <- create_variable(tatums_start,dataset,16)
-    
-  feature.music<-matrix(NA, nrow = m, ncol = n)
+  #X_songs <- create_variable(songs,dataset,14)
+  X_tatums_confidence <- create_variable(tatums_confidence,dataset,14)
+  X_tatums_start <- create_variable(tatums_start,dataset,15)
+  
+  feature.music<-matrix(NA,nrow = 100, ncol = 15)
   
   feature.music[,1]<-variable.feature(X_bars_confidence,num.center)
   feature.music[,2]<-variable.feature(X_bars_start,num.center)
@@ -124,12 +186,19 @@ create.feature<-function(dataset,num.center){
   feature.music[,11]<-variable.feature(X_segments_pitches,num.center)
   feature.music[,12]<-variable.feature(X_segments_start,num.center)
   feature.music[,13]<-variable.feature(X_segments_timbre,num.center)
-  feature.music[,14]<-variable.feature(X_song,num.center)
-  feature.music[,15]<-variable.feature(X_tatums_confidence,num.center)
-  feature.music[,16]<-variable.feature(X_tatums_start,num.center)
+  #feature.music[,14]<-variable.feature(X_song,num.center)
+  feature.music[,14]<-variable.feature(X_tatums_confidence,num.center)
+  feature.music[,15]<-variable.feature(X_tatums_start,num.center)
   
+  return(feature.music)
   
 }
+
+
+test_feature<-create.feature(dataset=X_test, num.center=20)
+
+
+  
   
   
   
@@ -236,17 +305,14 @@ a<-fit1$topics
 
 #############   test.R  ########
 
-
-#have to load fit model 
-#train.feature  
-
+library(caret)
 
 load("~/Desktop/Project4_data/fit.RData") ### fit 
 load("~/Desktop/Project4_data/feature_music.RData") ### feature.music==train.feature
 
 Y<-c()
 for (i in 1:2350){
-  Y[i]<-which(fit1$document_sums[,i]==max(fit1$document_sums[,i]))
+  Y[i]<-which(fit$document_sums[,i]==max(fit$document_sums[,i]))
 }
 
 
@@ -257,27 +323,88 @@ test.music<-function(train.feature,
   
   hahaha<-knn3Train(train.feature[,-14], test.feature[,-14],
                     train.topic, k = 5, prob = TRUE) 
-  heihei<-attributes(hahaha)$prob
+  
+  
+  a<-attributes(hahaha)$prob[,1:10]#1-10
+  b<-attributes(hahaha)$prob[,11:17]#12-18
+  c<-attributes(hahaha)$prob[,18]#20
+  d<-rep(0,100)
+  
+  heihei<-cbind(a,d,b,d,c)
+  
+  finally<-heihei %*% model.fit$topics
+  
   
   n<-nrow(test.feature)
   
-  finally<-attributes(hahaha)$prob %*% model.fit$topics
-  
   for (i in 1:n){
-    finally[i,]<-order(finally[i,])
+    finally[i,]<-order(finally[i,],decreasing = TRUE)
   }
   
   return(finally)
   
 }
 
+test_label<-test.music(feature.music,test_feature, Y,fit)
 
 
 
-
-# lll<-test.music(feature.music[1:1000,],feature.music[1000:1200,],
-#            Y[1:1000],fit)
-
-
-
-
+# 
+# hahaha<-knn3Train(feature.music[,-14], test_feature,
+#                   Y, k = 5, prob = TRUE) 
+# 
+# a<-attributes(hahaha)$prob[,1:10]#1-10
+# b<-attributes(hahaha)$prob[,11:17]#12-18
+# c<-attributes(hahaha)$prob[,18]#20
+# d<-rep(0,100)
+# 
+# heihei<-cbind(a,d,b,d,c)
+# 
+# 
+# heihei
+# fit$topics
+# 
+# attributes(hahaha)$prob
+# 
+# a<-attributes(hahaha)$prob[,1:10]#1-10
+# b<-attributes(hahaha)$prob[,11:17]#12-18
+# c<-attributes(hahaha)$prob[,18]#20
+# d<-rep(0,100)
+# heihei<-cbind(a,d,b,d,c)
+# 
+# finally<-heihei %*% fit$topics
+# finally[1:40,1:40]
+# 
+# 
+# dim(heihei)
+# dim(fit$topics)
+# n<-nrow(test.feature)
+# 
+# for (i in 1:100){
+#   finally[i,]<-order(finally[i,],decreasing = TRUE)
+# }
+# 
+# return(finally)
+# 
+# 
+# order(fit$topics[1,],decreasing = TRUE)
+# 
+# test_label<-test.music(feature.music,test_feature, Y,fit)
+# test_label<-test.music(feature.music[1:1000,],feature.music[1001:1200,],
+#                        Y[1:1000],fit)
+# test_label[1:100,1:20]
+# 
+# 
+# 
+# finally[1,which(finally[1,]==9)]
+# 
+# finally[2,which(finally[2,]==9)]
+# test_label<-test.music(feature.music,tt, Y,fit)
+# 
+# 
+# row.names(finally)<-mydata
+# 
+# 
+# write.csv(finally,"~/Desktop/test.csv")
+#   
+# class(  mydata)
