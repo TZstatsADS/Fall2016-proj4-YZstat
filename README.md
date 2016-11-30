@@ -11,7 +11,9 @@ Term: Fall 2016
 + Contributor's name:
 + Projec title: Words and Music
 + Project summary: Use music data to estimate the distribution of the lyrics. 
+
 For the music data:
+
 After extract the h5data, I use Kmeans cluster to all of features contains in the h5 file excluded the "song". By the Kmeans cluster, I choose 20 as the levels of category. After extract the feature by this method I have 2350*15 matrix as the featrue.
 
 Then about the lyrics, I use topic modelling, and I choose 20 topics. And choose the maximum probability as the only one topic.
