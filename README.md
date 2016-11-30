@@ -24,8 +24,11 @@ About the association, I take supervised learning. By KNN method, I assigned eac
 Sorry for the late update of the file direction.  
 
 All related codes are in "doc" file. 
+
 feature.R extract the music features both for train and test data.
+
 test.R conduct the rank of the test data.
+
 ads_proj4.R is full version of the project code. 
 	
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
